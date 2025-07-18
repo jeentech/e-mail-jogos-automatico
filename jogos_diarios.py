@@ -16,7 +16,7 @@ ANO_ATUAL = datetime.now().year
 
 remetente = "jeentech.alerts@gmail.com"
 destinatarios = [
-    "jeniioliveira23@gmail.com","Bellamorgon@gmail.com"
+    "jeniioliveira23@gmail.com", "Bellamorgon@gmail.com"
 ]
 senha_app = "wlry qgop sqvi bxgy"
 
@@ -27,9 +27,6 @@ ligas_ids = {
     "🇧🇷 Copa do Brasil": 73,
     "🇧🇷 Libertadores": 13,
     "🇧🇷 Sul-Americana": 14,
-    "🌍 Mundial de Clubes": 196,
-    "⚽ Supercopa do Brasil": 1031,
-    "🏆 Recopa Sul-Americana": 1009
 }
 
 # --------- CLUBES INDIVIDUAIS ---------
@@ -82,7 +79,7 @@ def buscar_jogos_ligas():
     return jogos_por_liga
 
 # --------- FUNÇÃO: Buscar jogos por time ou seleção ---------
-def buscar_jogos_selecao(time_id, titulo):
+def buscar_jogos_time_especifico(time_id, nome_time):
     headers = {
         "X-RapidAPI-Key": API_KEY,
         "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com"
@@ -98,16 +95,18 @@ def buscar_jogos_selecao(time_id, titulo):
         resp.raise_for_status()
         dados = resp.json().get('response', [])
     except Exception as e:
-        print(f"⚠️ Erro ao buscar {titulo}: {e}")
+        print(f"⚠️ Erro ao buscar {nome_time}: {e}")
         return []
 
     jogos = []
     for jogo in dados:
-        casa = jogo['teams']['home']['name']
-        fora = jogo['teams']['away']['name']
+        time_casa = jogo['teams']['home']['name']
+        time_fora = jogo['teams']['away']['name']
+        if nome_time.lower() not in time_casa.lower() and nome_time.lower() not in time_fora.lower():
+            continue  # Ignora jogos que não envolvem esse time no nome
         utc = datetime.fromisoformat(jogo['fixture']['date'].replace("Z", "+00:00"))
         brt = utc.astimezone(fuso_brasilia).strftime('%H:%M')
-        jogos.append(f"<li><b>{casa} x {fora}</b> - {brt}</li>")
+        jogos.append(f"<li><b>{time_casa} x {time_fora}</b> - {brt}</li>")
     return jogos
 
 # --------- FUNÇÃO: Scraper Globo (backup Mundial) ---------
@@ -139,22 +138,22 @@ jogos_ligas = buscar_jogos_ligas()
 for liga, lista in jogos_ligas.items():
     corpo += f"<h3>{liga}:</h3><ul>" + "".join(lista) + "</ul>"
 
-# Seleção Brasileira
-selecao_masc = buscar_jogos_selecao(1599, "Seleção Masculina")
+# Seleções
+selecao_masc = buscar_jogos_time_especifico(1599, "Brasil")
 if selecao_masc:
     corpo += "<h3>🇧🇷 Seleção Brasileira Masculina:</h3><ul>" + "".join(selecao_masc) + "</ul>"
 
-selecao_fem = buscar_jogos_selecao(1598, "Seleção Feminina")
+selecao_fem = buscar_jogos_time_especifico(1598, "Brasil")
 if selecao_fem:
     corpo += "<h3>🇧🇷 Seleção Brasileira Feminina:</h3><ul>" + "".join(selecao_fem) + "</ul>"
 
-# Clubes brasileiros individualmente
+# Clubes brasileiros
 for nome_time, time_id in clubes_brasileiros.items():
-    jogos_time = buscar_jogos_selecao(time_id, nome_time)
-    if jogos_time:
-        corpo += f"<h3>🔷 Jogo do {nome_time}:</h3><ul>" + "".join(jogos_time) + "</ul>"
+    jogos = buscar_jogos_time_especifico(time_id, nome_time)
+    if jogos:
+        corpo += f"<h3>🔷 Jogo do {nome_time}:</h3><ul>" + "".join(jogos) + "</ul>"
 
-# Se nenhum jogo encontrado
+# Nenhum jogo encontrado
 if not mundial_scrap and not jogos_ligas and not selecao_masc and not selecao_fem:
     corpo += "<p>❌ Nenhum jogo encontrado para hoje.</p>"
 
